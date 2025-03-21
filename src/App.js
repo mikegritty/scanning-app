@@ -36,10 +36,16 @@ export default function App() {
   };
 
   const speakCue = (cue) => {
+    if (!window.speechSynthesis) return; // Ensure browser supports speech
+
     const translatedCue = translations[language][cue] || cue;
     const utterance = new SpeechSynthesisUtterance(translatedCue);
     utterance.lang = language;
-    speechSynthesis.speak(utterance);
+
+    // Delay to ensure speech synthesis engine is ready
+    setTimeout(() => {
+      window.speechSynthesis.speak(utterance);
+    }, 200);
   };
 
   const toggleColor = (color) => {
@@ -57,15 +63,15 @@ export default function App() {
   useEffect(() => {
     if (screen !== "running") return;
 
-    let drillTimeout;
-    if (durationLimit !== "infinite") {
-      const durationInMs = parseInt(durationLimit) * 60 * 1000;
-      drillTimeout = setTimeout(stopDrill, durationInMs);
-    }
+    let lastColor = null; // Store last used color
 
     const interval = setInterval(() => {
       if (mode === "visual") {
-        const newColor = selectedColors[Math.floor(Math.random() * selectedColors.length)];
+        let newColor;
+        do {
+          newColor = selectedColors[Math.floor(Math.random() * selectedColors.length)];
+        } while (newColor === lastColor); // Keep picking until different
+        lastColor = newColor;
         setCurrentCue(newColor);
         document.body.style.backgroundColor = newColor;
       }
@@ -79,14 +85,11 @@ export default function App() {
           setCurrentCue(newDirection);
           document.body.style.backgroundColor = "black";
           speakCue(newDirection);
-        }, 1800); // 1.8s delay after tick
+        }, 1800);
       }
     }, intervalMs);
 
-    return () => {
-      clearInterval(interval);
-      clearTimeout(drillTimeout);
-    };
+    return () => clearInterval(interval);
   }, [screen, mode, selectedColors, selectedDirections, intervalMs, durationLimit, language]);
 
   if (screen === "running") {
